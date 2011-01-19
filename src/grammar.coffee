@@ -352,6 +352,9 @@ grammar =
 
   # Valid arguments are Block or Splats.
   Arg: [
+    o 'AlphaNumeric : Expression', -> new Assign new Value($1), $3, 'object'
+    o 'ThisProperty : Expression', -> new Assign new Value($1), $3, 'object'
+    o 'Identifier : Expression', -> new Assign new Value($1), $3, 'object'
     o 'Expression'
     o 'Splat'
   ]
@@ -580,6 +583,7 @@ for name, alternatives of grammar
       tokens.push token unless grammar[token]
     alt[1] = "return #{alt[1]}" if name is 'Root'
     alt
+
 
 # Initialize the **Parser** with our list of terminal **tokens**, our **grammar**
 # rules, and the name of the root. Reverse the operators because Jison orders

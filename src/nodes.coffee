@@ -29,6 +29,19 @@ NEGATE  = -> @negated = not @negated; this
 # scope, and indentation level.
 exports.Base = class Base
 
+  aggregateImplicitObjects: (arguments) ->
+    args = []
+    assigns = null
+    for arg in arguments
+      unless arg instanceof Assign and arg.context == 'object'
+        args.push arg
+        assigns = null
+      else
+        unless assigns
+          args.push new Obj assigns = [], true
+        assigns.push arg
+    args
+
   # Common logic for determining whether to wrap this node in a closure before
   # compiling it, or to compile directly. We need to wrap if this node is a
   # *statement*, and it's not a *pureStatement*, and we're not at
@@ -505,22 +518,7 @@ exports.Call = class Call extends Base
     if code = Splat.compileSplattedArray o, @args, true
       return @compileSplat o, code
 
-    # Walk through the objects in the arguments, moving over simple values.
-    # This allows syntax like `call a: b, c` into `call({a: b}, c);`
-    args = []
-    for arg in @args
-      unless arg.isObject?() and arg.base.generated
-        args.push arg
-        continue
-      obj = null
-      for prop in arg.base.properties
-        if prop instanceof Assign
-          args.push obj = new Obj properties = [], true if not obj
-          properties.push prop
-        else
-          args.push prop
-          obj = null
-
+    args = @aggregateImplicitObjects @args
     args = (arg.compile o, LEVEL_LIST for arg in args).join ', '
     if @isSuper
       @superReference(o) + ".call(this#{ args and ', ' + args })"
@@ -759,7 +757,7 @@ exports.Arr = class Arr extends Base
     return '[]' unless @objects.length
     o.indent += TAB
     return code if code = Splat.compileSplattedArray o, @objects
-    code = (obj.compile o, LEVEL_LIST for obj in @objects).join ', '
+    code = (obj.compile o, LEVEL_LIST for obj in @aggregateImplicitObjects @objects).join ', '
     if code.indexOf('\n') >= 0
       "[\n#{o.indent}#{code}\n#{@tab}]"
     else
